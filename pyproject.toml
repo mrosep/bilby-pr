@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=45", "setuptools-scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bilby-pr"
+description = "Posterior repartitioning in bilby"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "bilby>=2.3.0",
+    "numpy",
+    "dynesty",
+]
+
+dynamic = ["version"]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+]
+
+[tool.setuptools_scm]
+
+[project.entry-points."bilby.samplers"]
+dynesty_pr = "bilby_pr.dynesty:DynestyPR"
