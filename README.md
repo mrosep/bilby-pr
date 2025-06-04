@@ -19,7 +19,7 @@ When calling `run_sampler`:
 
 ```python
 bilby.run_sampler(
-    sampler="dynesty-pr",
+    sampler="dynesty_pr",
     weights_file=<path/to/weights/file.pkl>
     ...
 )
