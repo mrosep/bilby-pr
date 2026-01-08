@@ -36,12 +36,20 @@ This package uses `margarine_unbounded`, a fork of the [`margarine` package by B
 
 ```bash
 # First install margarine_unbounded (if not already installed)
-cd /path/to/margarine_unbounded
+git clone https://github.com/mrosep/margarine_unbounded.git
+cd margarine_unbounded
 pip install .
 
 # Then install bilby-pr
-cd /path/to/bilby-pr
+git clone https://github.com/mrosep/bilby-pr.git
+cd bilby-pr
 pip install .
+```
+
+**Quick install from GitHub:**
+```bash
+pip install git+https://github.com/mrosep/margarine_unbounded.git
+pip install git+https://github.com/mrosep/bilby-pr.git
 ```
 
 ### Development Installation
