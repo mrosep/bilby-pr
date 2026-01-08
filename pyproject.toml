@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bilby-pr"
-description = "Posterior repartitioning in bilby"
+description = "Posterior repartitioning in bilby using normalizing flows (margarine_unbounded)"
 readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "MIT"}
@@ -15,6 +15,8 @@ dependencies = [
     "bilby>=2.3.0",
     "numpy",
     "dynesty",
+    "tensorflow>=2.8.0",
+    "tensorflow-probability>=0.16.0",
 ]
 
 dynamic = ["version"]
