@@ -172,7 +172,7 @@ You may see TensorFlow warnings about CPU features or threading. These are usual
 If you use this package, please cite:
 - The Bilby paper: [Ashton et al. 2019](https://ui.adsabs.harvard.edu/abs/2019ApJS..241...27A)
 - The margarine paper: [Bevins et al. 2021](https://ui.adsabs.harvard.edu/abs/2021MNRAS.508.2923B)
-- Your paper on posterior repartitioning (when published)
+- Posterior repartitioning for GWs papers: [Prathaban et al. 2025](https://academic.oup.com/mnras/article/541/1/200/8163830) and [add arXiv link for simple-pe-PR]()
 
 ## License
 
