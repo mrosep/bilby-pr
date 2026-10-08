@@ -144,7 +144,7 @@ The modified likelihood is used with the repartitioned prior transform in Dynest
 ## Requirements
 
 - Python >= 3.9
-- bilby >= 2.3.0
+- bilby >= 2.7.0
 - margarine_unbounded
 - tensorflow >= 2.8.0
 - tensorflow-probability >= 0.16.0

@@ -14,6 +14,7 @@ def _initialize_global_variables(
     priors,
     search_parameter_keys,
     use_ratio,
+    parameters,
     weights_file,
     flow_params,
 ):
@@ -27,6 +28,8 @@ def _initialize_global_variables(
         priors: Bilby prior dictionary
         search_parameter_keys: List of parameter names being sampled
         use_ratio: Whether to use likelihood ratio (Bilby setting)
+        parameters: Fixed parameter values (DeltaFunction priors, including
+            those set by likelihood marginalisation), from Sampler.parameters
         weights_file: Path to trained MAF model (.pkl file)
         flow_params: List of parameter names to be modeled by the flow
     """
@@ -35,6 +38,7 @@ def _initialize_global_variables(
     _sampling_convenience_dump.priors = priors
     _sampling_convenience_dump.search_parameter_keys = search_parameter_keys
     _sampling_convenience_dump.use_ratio = use_ratio
+    _sampling_convenience_dump.parameters = parameters
 
     # Map flow parameter names to their indices in the full parameter list
     flow_params_indices = [search_parameter_keys.index(param) for param in flow_params]
@@ -113,6 +117,7 @@ class PRGlobalVariablesMixin:
                     self.priors,
                     self._search_parameter_keys,
                     self.use_ratio,
+                    self.parameters,
                     self.weights_file,
                     self.flow_params,
                 ),
@@ -126,6 +131,7 @@ class PRGlobalVariablesMixin:
             priors=self.priors,
             search_parameter_keys=self._search_parameter_keys,
             use_ratio=self.use_ratio,
+            parameters=self.parameters,
             weights_file=self.weights_file,
             flow_params=self.flow_params,
         )

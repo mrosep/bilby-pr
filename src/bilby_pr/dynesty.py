@@ -1,5 +1,6 @@
 from bilby.core.sampler.dynesty import Dynesty
 from bilby.core.sampler.base_sampler import signal_wrapper
+from bilby.core.likelihood import _safe_likelihood_call
 from unittest.mock import patch
 import numpy as np
 import tensorflow as tf
@@ -77,14 +78,16 @@ def _log_likelihood_wrapper(theta):
     """
     from .utils import _sampling_convenience_dump
 
-    params = {
+    search_params = {
         key: t
         for key, t in zip(_sampling_convenience_dump.search_parameter_keys, theta)
     }
 
-    # Compute original prior probability for ALL parameters
-    prior_logprob = _sampling_convenience_dump.priors.ln_prob(params)
-    _sampling_convenience_dump.likelihood.parameters.update(params)
+    # Compute original prior probability for ALL search parameters
+    prior_logprob = _sampling_convenience_dump.priors.ln_prob(search_params)
+
+    # Likelihood also needs the fixed parameters (e.g. marginalised distance)
+    params = {**_sampling_convenience_dump.parameters, **search_params}
 
     if np.isfinite(prior_logprob):
         # Extract flow-modeled parameters
@@ -101,10 +104,11 @@ def _log_likelihood_wrapper(theta):
                     prior_correction += _sampling_convenience_dump.priors[key].ln_prob(theta[i])
 
             # Compute likelihood
-            if _sampling_convenience_dump.use_ratio:
-                logL = _sampling_convenience_dump.likelihood.log_likelihood_ratio()
-            else:
-                logL = _sampling_convenience_dump.likelihood.log_likelihood()
+            logL = _safe_likelihood_call(
+                _sampling_convenience_dump.likelihood,
+                params,
+                _sampling_convenience_dump.use_ratio,
+            )
 
             # Return: log[L(θ) × π(θ) / q_new(θ)]
             #       = logL + log[π(θ)] - log[q(θ_flow)] - log[π(θ_non-flow)]
