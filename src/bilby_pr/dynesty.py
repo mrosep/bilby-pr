@@ -14,8 +14,9 @@ def _prior_transform_wrapper(theta):
     This wrapper is needed for multiprocessing compatibility with Bilby's Dynesty sampler.
 
     For parameters modeled by the flow:
-        - Uses margarine_unbounded's .quantile() method
+        - Uses the flow adapter's .quantile() method (see flows.py)
         - Transforms: uniform [0,1] → standard normal → MAF → physical parameters
+          (margarine additionally maps the output into its [theta_min, theta_max] box)
 
     For other parameters:
         - Uses Bilby's standard prior.rescale() method
@@ -34,7 +35,7 @@ def _prior_transform_wrapper(theta):
     theta_scale = np.array([theta[i] for i in _sampling_convenience_dump.flow_params_indices])
 
     # Transform uniform samples to physical space via the flow
-    y = _sampling_convenience_dump.maf_model_quantile(theta_scale).numpy()
+    y = _sampling_convenience_dump.maf_model_quantile(theta_scale)
 
     # Create mapping from global parameter index to flow parameter index
     flow_index_mapping = {
@@ -94,7 +95,7 @@ def _log_likelihood_wrapper(theta):
         theta_scale = np.array([theta[i] for i in _sampling_convenience_dump.flow_params_indices])
 
         # Compute flow density q(θ_flow) for flow parameters
-        maf_logprob = _sampling_convenience_dump.maf_model_prob(theta_scale).numpy()
+        maf_logprob = _sampling_convenience_dump.maf_model_prob(theta_scale)
 
         if np.isfinite(maf_logprob):
             # Compute prior probability for non-flow parameters: π(θ_non-flow)
@@ -122,10 +123,12 @@ class DynestyPR(PRGlobalVariablesMixin, Dynesty):
     """Dynesty nested sampler with posterior repartitioning using normalizing flows.
 
     This sampler extends Bilby's standard Dynesty sampler to use trained normalizing flows
-    (MAFs from margarine_unbounded) to repartition the prior during nested sampling.
+    (MAFs from margarine or margarine_unbounded) to repartition the prior during
+    nested sampling.
 
     Key features:
-        - Transforms selected parameters using trained flows via .quantile() method
+        - Transforms selected parameters using trained flows via the backend's
+          uniform-to-physical transform
         - Other parameters use standard Bilby priors
         - Modifies likelihood to account for the change of sampling prior
         - Accelerates sampling by focusing on high-probability regions
@@ -134,6 +137,8 @@ class DynestyPR(PRGlobalVariablesMixin, Dynesty):
         weights_file (str): Path to the trained MAF model (.pkl file)
         flow_params (list): List of parameter names to model with the flow
             (must be in the same order as used during training)
+        flow_backend (str): Package the flow was trained with,
+            'margarine' or 'margarine_unbounded'
 
     Example:
         result = bilby.run_sampler(
@@ -142,6 +147,7 @@ class DynestyPR(PRGlobalVariablesMixin, Dynesty):
             sampler='dynesty_pr',
             weights_file='trained_flow.pkl',
             flow_params=['mass_ratio', 'chirp_mass', 'theta_jn'],
+            flow_backend='margarine_unbounded',
             nlive=500
         )
     """
