@@ -159,6 +159,57 @@ class DynestyPR(PRGlobalVariablesMixin, Dynesty):
         """The name of the package that provides this sampler."""
         return "bilby_pr"
 
+    def get_initial_points_from_prior(self, npoints=1):
+        """Draw the initial live points from the repartitioned prior.
+
+        Overrides Bilby's version, which draws from the original prior and stores the
+        unmodified likelihood. This mirrors it, but uses the flow-based prior transform
+        and the modified likelihood, so the initial live points are consistent with
+        the rest of the run.
+
+        Parameters
+        ==========
+        npoints: int
+            The number of values to return
+
+        Returns
+        =======
+        unit_cube, parameters, likelihood: tuple of array_like
+            unit_cube (nlive, ndim) is an array of the samples from the
+            unit cube, parameters (nlive, ndim) is the unit_cube array
+            transformed to the target space, while likelihood (nlive) are the
+            modified likelihood evaluations.
+        """
+        from bilby.core.utils import logger, random
+
+        logger.info("Generating initial points from the flow (posterior repartitioning)")
+        unit_cube = []
+        parameters = []
+        likelihood = []
+        while len(unit_cube) < npoints:
+            unit = random.rng.uniform(0, 1, self.ndim)
+            theta = _prior_transform_wrapper(unit)
+            if self._check_draw_pr(theta, warning=False):
+                unit_cube.append(unit)
+                parameters.append(theta)
+                likelihood.append(_log_likelihood_wrapper(theta))
+
+        return np.array(unit_cube), np.array(parameters), np.array(likelihood)
+
+    def _check_draw_pr(self, theta, warning=True):
+        """Bilby's check_draw, but with the modified likelihood.
+
+        Kept separate from check_draw, which Bilby also calls while constructing
+        the sampler, before the flow has been loaded.
+        """
+        log_p = self.log_prior(theta)
+        log_l = _log_likelihood_wrapper(theta)
+        return self._check_bad_value(
+            val=log_p, warning=warning, theta=theta, label="prior"
+        ) and self._check_bad_value(
+            val=log_l, warning=warning, theta=theta, label="likelihood"
+        )
+
     @signal_wrapper
     def run_sampler(self):
         """Run the Dynesty sampler with posterior repartitioning.
