@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bilby-pr"
-description = "Posterior repartitioning in bilby using normalizing flows (margarine_unbounded)"
+description = "Posterior repartitioning in bilby using normalizing flows (margarine or margarine_unbounded)"
 readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "MIT"}
@@ -12,16 +12,23 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 dependencies = [
-    "bilby>=2.3.0",
+    "bilby>=2.7.0",
     "numpy",
     "dynesty",
     "tensorflow>=2.8.0",
     "tensorflow-probability>=0.16.0",
+    "tf_keras",
 ]
 
 dynamic = ["version"]
 
 [project.optional-dependencies]
+margarine = [
+    "margarine>=1.2.8,<2",
+]
+margarine_unbounded = [
+    "margarine_unbounded @ git+https://github.com/mrosep/margarine_unbounded.git",
+]
 test = [
     "pytest",
 ]

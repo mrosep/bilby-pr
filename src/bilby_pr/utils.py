@@ -3,7 +3,8 @@ from bilby.core.sampler.base_sampler import _SamplingContainer
 from bilby.core.utils import random
 import os
 import tensorflow as tf
-from margarine_unbounded.maf import MAF
+
+from .flows import FLOW_BACKENDS
 
 
 _sampling_convenience_dump = _SamplingContainer()
@@ -14,27 +15,34 @@ def _initialize_global_variables(
     priors,
     search_parameter_keys,
     use_ratio,
+    parameters,
     weights_file,
     flow_params,
+    flow_backend,
 ):
     """Initialize global variables for posterior repartitioning in worker processes.
 
     This function is called once in each worker process (or in the main process if not
-    using multiprocessing) to set up the trained MAF model and related state.
+    using multiprocessing) to set up the trained flow and related state.
 
     Args:
         likelihood: Bilby likelihood object
         priors: Bilby prior dictionary
         search_parameter_keys: List of parameter names being sampled
         use_ratio: Whether to use likelihood ratio (Bilby setting)
-        weights_file: Path to trained MAF model (.pkl file)
+        parameters: Fixed parameter values (DeltaFunction priors, including
+            those set by likelihood marginalisation), from Sampler.parameters
+        weights_file: Path to trained flow (.pkl file)
         flow_params: List of parameter names to be modeled by the flow
+        flow_backend: Package the flow was trained with, a key of FLOW_BACKENDS
+            ('margarine' or 'margarine_unbounded')
     """
     global _sampling_convenience_dump
     _sampling_convenience_dump.likelihood = likelihood
     _sampling_convenience_dump.priors = priors
     _sampling_convenience_dump.search_parameter_keys = search_parameter_keys
     _sampling_convenience_dump.use_ratio = use_ratio
+    _sampling_convenience_dump.parameters = parameters
 
     # Map flow parameter names to their indices in the full parameter list
     flow_params_indices = [search_parameter_keys.index(param) for param in flow_params]
@@ -49,9 +57,9 @@ def _initialize_global_variables(
     tf.config.threading.set_intra_op_parallelism_threads(1)
     tf.keras.backend.clear_session()
 
-    # Load the trained MAF model
-    logger.info(f"Loading weights from: {weights_file}")
-    _sampling_convenience_dump.maf_model = MAF.load(weights_file)
+    # Load the trained flow with the adapter for its backend
+    logger.info(f"Loading {flow_backend} weights from: {weights_file}")
+    _sampling_convenience_dump.maf_model = FLOW_BACKENDS[flow_backend].load(weights_file)
     _sampling_convenience_dump.maf_model_prob = _sampling_convenience_dump.maf_model.log_prob
     _sampling_convenience_dump.maf_model_quantile = _sampling_convenience_dump.maf_model.quantile
 
@@ -69,14 +77,16 @@ class PRGlobalVariablesMixin:
 
     This should work with any Bilby sampler that uses multiprocessing.
 
-    Adds two required kwargs to the sampler:
-        weights_file: Path to trained MAF model
+    Adds three required kwargs to the sampler:
+        weights_file: Path to trained flow
         flow_params: List of parameter names to model with the flow
+        flow_backend: Package the flow was trained with
+            ('margarine' or 'margarine_unbounded')
     """
 
     @property
     def weights_file(self):
-        """Path to the trained MAF model file (.pkl)."""
+        """Path to the trained flow file (.pkl)."""
         return self.kwargs.get("weights_file", None)
 
     @property
@@ -85,11 +95,17 @@ class PRGlobalVariablesMixin:
         return self.kwargs.get("flow_params", None)
 
     @property
+    def flow_backend(self):
+        """Package the flow was trained with ('margarine' or 'margarine_unbounded')."""
+        return self.kwargs.get("flow_backend", None)
+
+    @property
     def default_kwargs(self):
         """Add PR-specific kwargs to the sampler's default kwargs."""
         kwargs = super().default_kwargs
         kwargs["weights_file"] = None
         kwargs['flow_params'] = None
+        kwargs["flow_backend"] = None
         return kwargs
 
     def _setup_pool(self):
@@ -98,6 +114,11 @@ class PRGlobalVariablesMixin:
         Overrides Bilby's standard _setup_pool() to ensure that worker processes
         are initialized with the trained flow model and related state.
         """
+        if self.flow_backend not in FLOW_BACKENDS:
+            raise ValueError(
+                f"flow_backend must be one of {list(FLOW_BACKENDS)}, got {self.flow_backend!r}"
+            )
+
         if self.kwargs.get("pool", None) is not None:
             logger.info("Using user defined pool.")
             self.pool = self.kwargs["pool"]
@@ -113,8 +134,10 @@ class PRGlobalVariablesMixin:
                     self.priors,
                     self._search_parameter_keys,
                     self.use_ratio,
+                    self.parameters,
                     self.weights_file,
                     self.flow_params,
+                    self.flow_backend,
                 ),
             )
         else:
@@ -126,7 +149,9 @@ class PRGlobalVariablesMixin:
             priors=self.priors,
             search_parameter_keys=self._search_parameter_keys,
             use_ratio=self.use_ratio,
+            parameters=self.parameters,
             weights_file=self.weights_file,
             flow_params=self.flow_params,
+            flow_backend=self.flow_backend,
         )
         self.kwargs["pool"] = self.pool
